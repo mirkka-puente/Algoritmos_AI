@@ -43,10 +43,10 @@ file <- "data_1000.csv"
 dt <- read.csv(file, fileEncoding="UTF-8-BOM", check.names=FALSE)
 lb <- read.csv('labels.csv')
 #Prueba
-dt_500 <- read.csv("datos_500.csv", fileEncoding="UTF-8-BOM", check.names=FALSE)
+#dt_500 <- read.csv("data_500.csv", fileEncoding="UTF-8-BOM", check.names=FALSE)
 
 # Guardado en un dataframe 
-data_frame <- data.frame(sapply(dt_500[2:501], as.numeric))
+data_frame <- data.frame(sapply(dt[2:1001], as.numeric))
 
 # Estadisticos
 summary(data_frame[, 1:10])
@@ -59,6 +59,8 @@ any(data_frame == 0)
 zero_counts <- colSums(data_frame == 0)
 zero_prop   <- zero_counts / nrow(data_frame)
 #Determinar si la columna deberia eliminarse
+gen_zero <- list()
+count <- 1
 for (i in seq_along(zero_prop)) {
   if (zero_prop[i] >= 0.9) {
     gen_zero[[count]] <- names(zero_prop)[i]
@@ -77,12 +79,6 @@ boxplot(dt_denoised[, 1:20], main = "Boxplot de los 20 primeros genes")
 vars <- apply(dt_denoised, 2, var) #2 es para columnas, var calcula varianza
 dt_high_var <- dt_denoised[, vars > quantile(vars, 0.1)] #calcula el percentil 10 de var
 
-#Escalar datos
-dt_scaled <- scale(dt_high_var)
-
-#Remover variables que no vamos a usar
-rm(dt_denoised, dt_high_var, gen_zero, count, i, zero_counts, zero_df, n)
-
 # Funcion prcomp()
 #   data: conjunto de datos
 #   center: si queremos que las variables esten centradas en cero
@@ -90,7 +86,7 @@ rm(dt_denoised, dt_high_var, gen_zero, count, i, zero_counts, zero_df, n)
 
 # Calculo de componentes principales con la funcion prcomp
 set.seed(1997)
-pca.results <- prcomp(dt_scaled, center=FALSE, scale.=FALSE)
+pca.results <- prcomp(dt_high_var, center=TRUE, scale.=FALSE)
 
 # Resultado de las componentes principales
 pca.df <- data.frame(pca.results$x)
@@ -119,13 +115,119 @@ ggplot(pca.df, aes(x=PC1, y=PC2, color=lb$Class)) +
   geom_point(size=3) +
   scale_color_manual(values=c('red', 'blue', 'green', 'orange', 'purple')) +
   labs(title='PCA - Types of Cancer', x=x_label, y=y_label, color='Grupo') +
-  theme_classic() +
+  theme_minimal() +
   theme(panel.grid.major = element_line(color="gray90"), panel.grid.minor = element_blank(),
         panel.background = element_rect(fill = "gray95"), plot.title = element_text(hjust = 0.5))
 
 
 ```
+### Multidimensional Scaling 
 
+```{r MDS}
+#Remover todas las variables creadas en environment so far
+rm(list=ls())
+#Establecer nuestro directorio donde trabajaremos
+setwd("C:/Users/User/Desktop/UNIR/Algoritmos_IA/Algoritmos_AI")
+
+#Install libraries
+# Instalación
+pack_list <- c("ggplot2",
+               "dplyr",
+               "stats")
+
+for (pack in pack_list) {
+  if (!requireNamespace(pack, quietly = TRUE))
+    install.packages(pack)
+}
+
+# Carga de librerias
+library(stats)   # librería para el PCA
+library(ggplot2) # librería para hacer la representación gráfica
+library(dplyr)
+
+#Save the data in our environment
+file <- "data_1000.csv"
+dt <- read.csv(file, fileEncoding="UTF-8-BOM", check.names=FALSE)
+lb <- read.csv('labels.csv')
+#Prueba
+dt_500 <- read.csv("datos_500.csv", fileEncoding="UTF-8-BOM", check.names=FALSE)
+
+# Guardado en un dataframe 
+data_frame <- data.frame(sapply(dt_500[2:501], as.numeric))
+
+# Valores NA y 0
+anyNA(data_frame)
+na_counts <- colSums((is.na(data_frame)))
+
+any(data_frame == 0)
+zero_counts <- colSums(data_frame == 0)
+zero_prop   <- zero_counts / nrow(data_frame)
+#Determinar si la columna deberia eliminarse
+gen_zero <- list()
+count <- 1
+for (i in seq_along(zero_prop)) {
+  if (zero_prop[i] >= 0.9) {
+    gen_zero[[count]] <- names(zero_prop)[i]
+    count <- count + 1
+  }
+}
+
+#Eliminar las columnas con un porcentaje de ceros mayor al 90%
+dt_denoised <- data_frame %>% select(-any_of(unlist(gen_zero)))
+
+#Eliminar genes sin variabilidad, si el gen tiene varianza alta, se conserva
+vars <- apply(dt_denoised, 2, var) #2 es para columnas, var calcula varianza
+dt_high_var <- dt_denoised[, vars > quantile(vars, 0.1)] #calcula el percentil 10 de var
+
+
+# Algoritmo #
+
+# Funcion cmdscale()
+#   d: matriz de distancias (usaremos la funcion dist)
+#   k: numero que indica el tamaño final de los datos (max num de variables)
+#   eig: si calculamos autovalores de las variables. Nos sirve para el calculo 
+#        de la varianza explicada, es decir, para coger las columnas de mayor
+#        variabilidad
+#   x.ret: para devolver la matriz de distancias que calcule el algoritmo
+
+#   points: dataframe de tamaño k que representa las nuevas coordenadas
+#   eig: vector con los autovalores para elegir el numero de dimensiones
+
+
+#a. Necesitamos que nuestros genes esten en las filas y expresion en columnas para
+#calcular correlación entre muestras.
+dt_transpuesta <- t(dt_high_var)
+
+#b. Queremos similitud en patrones de expresión, no valores absolutos. 
+#Usar correlacion Pearson ya que Pearson captura el patrón de expresión
+corr <- cor(t(dt_transpuesta), method = 'pearson')
+
+#c. Utilizamos la funcion as.dist para calcular la matriz de distancias 
+dt_dist <- 1 - corr
+distances <- as.dist(dt_dist)
+
+# Utilizamos la funcon cmdscale para realizar el MSD
+mds.results <- cmdscale(distances, eig=TRUE, k=2, x.ret=TRUE)
+
+# Calculamos la varianza explicada
+varianza.explicada <- mds.results$eig/sum(mds.results$eig) * 100
+
+# Sacamos en un dataframe los puntos del mds
+mds.df <- data.frame(mds.results$points)
+
+#lbb <- t(lb)
+
+# Grafico
+ggplot(mds.df, aes(x=X1, y=X2, color=lb$Class)) +
+  geom_point(size=3) + 
+  scale_color_manual(values=c("red", "blue", "green", "orange", "purple")) +
+  labs(title="MDS - Types of Cancer", x="Dimension 1 (X1)", y="Dimension 2 (X2)", color = "Grupo") +
+  theme_classic() + 
+  theme(panel.grid.major = element_line(color = "gray90"), panel.grid.minor = element_blank(),
+        panel.background = element_rect(fill = "gray95"), plot.title=element_text(hjust=0.5))
+
+
+```
 
 
 

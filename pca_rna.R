@@ -10,7 +10,7 @@ library(stats)   # librería para el PCA
 library(ggplot2) # librería para hacer la representación gráfica
 
 # Lectura de datos
-data.raw <- read.csv('data.csv')
+data.raw <- read.csv('datos_500.csv')
 labels.raw <- read.csv('labels.csv')
 
 # Guardado en un dataframe de los 500 primeros genes 

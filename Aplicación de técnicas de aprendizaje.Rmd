@@ -38,7 +38,7 @@ library(stats)   # librería para el PCA
 library(ggplot2) # librería para hacer la representación gráfica
 library(dplyr)
 
-#Save the data in our environment
+#Guardar data en nuestro environment
 file <- "data_1000.csv"
 dt <- read.csv(file, fileEncoding="UTF-8-BOM", check.names=FALSE)
 lb <- read.csv('labels.csv')
@@ -145,15 +145,15 @@ library(stats)   # librería para el PCA
 library(ggplot2) # librería para hacer la representación gráfica
 library(dplyr)
 
-#Save the data in our environment
+#Guardar data en nuestro environment
 file <- "data_1000.csv"
 dt <- read.csv(file, fileEncoding="UTF-8-BOM", check.names=FALSE)
 lb <- read.csv('labels.csv')
 #Prueba
-dt_500 <- read.csv("datos_500.csv", fileEncoding="UTF-8-BOM", check.names=FALSE)
+#dt_500 <- read.csv("datos_500.csv", fileEncoding="UTF-8-BOM", check.names=FALSE)
 
 # Guardado en un dataframe 
-data_frame <- data.frame(sapply(dt_500[2:501], as.numeric))
+data_frame <- data.frame(sapply(dt[2:1001], as.numeric))
 
 # Valores NA y 0
 anyNA(data_frame)
@@ -200,7 +200,7 @@ dt_transpuesta <- t(dt_high_var)
 
 #b. Queremos similitud en patrones de expresión, no valores absolutos. 
 #Usar correlacion Pearson ya que Pearson captura el patrón de expresión
-corr <- cor(t(dt_transpuesta), method = 'pearson')
+corr <- cor(dt_transpuesta, method = 'pearson')
 
 #c. Utilizamos la funcion as.dist para calcular la matriz de distancias 
 dt_dist <- 1 - corr
@@ -215,23 +215,204 @@ varianza.explicada <- mds.results$eig/sum(mds.results$eig) * 100
 # Sacamos en un dataframe los puntos del mds
 mds.df <- data.frame(mds.results$points)
 
-#lbb <- t(lb)
-
 # Grafico
 ggplot(mds.df, aes(x=X1, y=X2, color=lb$Class)) +
   geom_point(size=3) + 
   scale_color_manual(values=c("red", "blue", "green", "orange", "purple")) +
   labs(title="MDS - Types of Cancer", x="Dimension 1 (X1)", y="Dimension 2 (X2)", color = "Grupo") +
-  theme_classic() + 
+  theme_minimal() + 
   theme(panel.grid.major = element_line(color = "gray90"), panel.grid.minor = element_blank(),
         panel.background = element_rect(fill = "gray95"), plot.title=element_text(hjust=0.5))
 
+##Los tipos de cáncer tienen firmas de expresión distintas, pero no todos por igual.
+#Algunos (KIRC, PRAD) se separan bien.
+#Otros (COAD, LUAD, BRCA) comparten más similitud global.
 
 ```
 
+### T-distributed Stochastic Neighbor Embedding
+
+```{r t-SNE }
+
+#Remover todas las variables creadas en environment so far
+rm(list=ls())
+#Establecer nuestro directorio donde trabajaremos
+setwd("C:/Users/User/Desktop/UNIR/Algoritmos_IA/Algoritmos_AI")
+
+#Install libraries
+# Instalación
+pack_list <- c("ggplot2",
+               "dplyr",
+               "Rtsne")
+
+for (pack in pack_list) {
+  if (!requireNamespace(pack, quietly = TRUE))
+    install.packages(pack)
+}
 
 
+# Carga de librerias
+library(ggplot2)
+library(Rtsne)
+library(dplyr)
+
+#Guardar data en nuestro environment
+file <- "data_1000.csv"
+dt <- read.csv(file, fileEncoding="UTF-8-BOM", check.names=FALSE)
+lb <- read.csv('labels.csv')
+#Prueba
+#dt_500 <- read.csv("datos_500.csv", fileEncoding="UTF-8-BOM", check.names=FALSE)
+
+# Guardado en un dataframe 
+dt_frame <- data.frame(sapply(dt[2:1001], as.numeric))
+
+# Valores NA y 0
+anyNA(dt_frame)
+na_counts <- colSums((is.na(dt_frame)))
+
+any(dt_frame == 0)
+zero_counts <- colSums(dt_frame == 0)
+zero_prop   <- zero_counts / nrow(dt_frame)
+#Determinar si la columna deberia eliminarse
+gen_zero <- list()
+count <- 1
+for (i in seq_along(zero_prop)) {
+  if (zero_prop[i] >= 0.9) {
+    gen_zero[[count]] <- names(zero_prop)[i]
+    count <- count + 1
+  }
+}
+
+#Eliminar las columnas con un porcentaje de ceros mayor al 90%
+dt_denoised <- dt_frame %>% select(-any_of(unlist(gen_zero)))
+
+#Eliminar genes sin variabilidad, si el gen tiene varianza alta, se conserva
+vars <- apply(dt_denoised, 2, var) #2 es para columnas, var calcula varianza
+dt_high_var <- dt_denoised[, vars > quantile(vars, 0.1)] #calcula el percentil 10 de var
+
+#Escalar mis datos porque t-SNE espera escalas similares.
+
+dt_scaled <- scale(dt_high_var) 
+
+# Algoritmo
+# funcion Rtsne()
+#   X: datos sobre los que reduciremos la dimensionalidad
+#   dims: tamaño final del conjunto de datos (mejor <=3) por eficiencia
+#   perplexity: importa para la calidad de clusters
+#   theta: importa para que corra mas rapido
+#   pca: TRUE para que la funcion haga un PCR internamente antes del t-SNE
+
+#   Variable Y con matriz del t-SNE
+
+set.seed(1997)
+tsne <- Rtsne(X=dt_scaled, perplexity = 50, theta = 0.5, pca = TRUE)
+tsne_result <- data.frame(tsne$Y)
+
+# Graficamos
+ggplot(tsne_result, aes(x = X1, y = X2, color = lb$Class)) +
+geom_point(size = 3) +
+scale_color_manual(values = c("red", "blue", "green", "orange", "purple")) +
+labs(title = "t-SNE - Types of cancer", x = "Dim 1", y = "Dim 2", color = "Grupo") +
+theme_classic() +
+theme(panel.grid.major = element_line(color = "gray90"), panel.grid.minor = element_blank(),
+panel.background = element_rect(fill = "gray95"), plot.title=element_text(hjust=0.5))
+
+```
+
+### Isometric Mapping
+
+```{r isomap}
+
+#Remover todas las variables creadas en environment so far
+rm(list=ls())
+#Establecer nuestro directorio donde trabajaremos
+setwd("C:/Users/User/Desktop/UNIR/Algoritmos_IA/Algoritmos_AI")
+
+#Install libraries
+# Instalación
+pack_list <- c("ggplot2",
+               "dplyr",
+               "BiocManager",
+               "plotly"
+               )
+
+for (pack in pack_list) {
+  if (!requireNamespace(pack, quietly = TRUE))
+    install.packages(pack)
+}
+#BiocManager::install("RDRToolbox")
+
+# Carga de librerias
+library(ggplot2)
+library(dplyr)
+library(BiocManager)
+library(RDRToolbox)
+library(plotly)
+
+#Guardar data en nuestro environment
+file <- "data_1000.csv"
+dt <- read.csv(file, fileEncoding="UTF-8-BOM", check.names=FALSE)
+lb <- read.csv('labels.csv')
+#Prueba
+dt_500 <- read.csv("datos_500.csv", fileEncoding="UTF-8-BOM", check.names=FALSE)
+
+# Guardado en un dataframe 
+dt_frame <- data.frame(sapply(dt_500[2:501], as.numeric))
+
+# Valores NA y 0
+anyNA(dt_frame)
+na_counts <- colSums((is.na(dt_frame)))
+
+any(dt_frame == 0)
+zero_counts <- colSums(dt_frame == 0)
+zero_prop   <- zero_counts / nrow(dt_frame)
+#Determinar si la columna deberia eliminarse
+gen_zero <- list()
+count <- 1
+for (i in seq_along(zero_prop)) {
+  if (zero_prop[i] >= 0.9) {
+    gen_zero[[count]] <- names(zero_prop)[i]
+    count <- count + 1
+  }
+}
+
+#Eliminar las columnas con un porcentaje de ceros mayor al 90%
+dt_denoised <- dt_frame %>% select(-any_of(unlist(gen_zero)))
+
+#Eliminar genes sin variabilidad, si el gen tiene varianza alta, se conserva
+vars <- apply(dt_denoised, 2, var) #2 es para columnas, var calcula varianza
+dt_high_var <- dt_denoised[, vars > quantile(vars, 0.1)] #calcula el percentil 10 de var
+
+#Escalar mis datos porque isometric mapping espera escalas similares.
+dt_scaled <- scale(dt_high_var) 
+
+# Algoritmo
+
+# Funcion Isomap()
+#   data -> datos (matriz) sobre los que haremos reduccion de dimensionalidad
+#   dim -> dimensiones de las columnas del espacio reducido
+#   k -> numero de vecinos cercanos a cada punto. A mayor k mayor computacion
+#   potResiduals -> devuelve la varianza explicada por las diferentes dimensiones
+
+#   Si se ha elegido una unica dimension devuelve una matriz
+#   Si se ha elegido un vector de dimensiones devolvera una matriz por cada elemento del vector
+
+# Calculamos isomap de 1 a 5 dimensiones y con 5 vecinos 
+isomap.results = Isomap(data=dt_scaled, dims=1:5, k=30, plotResiduals=TRUE)
+
+# Dataframe con los puntos que queremos dibujar en el plano 3D
+isomap.df <- data.frame(isomap.results$dim3) 
+
+# Graficamos
+isomap.df$Class <- lb$Class                  # add labels
+
+# Plot
+plot_ly(isomap.df, x = ~X1, y = ~X2, z = ~X3, color = ~Class, 
+        colors = c("red", "blue", "green", "orange", "purple"),
+        type = "scatter3d", mode = "markers") %>%
+  layout(title = "Isomap 3D - Types of Cancer")
 
 
+```
 
 

@@ -354,10 +354,10 @@ file <- "data_1000.csv"
 dt <- read.csv(file, fileEncoding="UTF-8-BOM", check.names=FALSE)
 lb <- read.csv('labels.csv')
 #Prueba
-dt_500 <- read.csv("datos_500.csv", fileEncoding="UTF-8-BOM", check.names=FALSE)
+#dt_500 <- read.csv("datos_500.csv", fileEncoding="UTF-8-BOM", check.names=FALSE)
 
 # Guardado en un dataframe 
-dt_frame <- data.frame(sapply(dt_500[2:501], as.numeric))
+dt_frame <- data.frame(sapply(dt[2:1001], as.numeric))
 
 # Valores NA y 0
 anyNA(dt_frame)
@@ -397,7 +397,7 @@ dt_scaled <- scale(dt_high_var)
 #   Si se ha elegido una unica dimension devuelve una matriz
 #   Si se ha elegido un vector de dimensiones devolvera una matriz por cada elemento del vector
 
-# Calculamos isomap de 1 a 5 dimensiones y con 5 vecinos 
+# Calculamos isomap de 1 a 5 dimensiones y con 30 vecinos 
 isomap.results = Isomap(data=dt_scaled, dims=1:5, k=30, plotResiduals=TRUE)
 
 # Dataframe con los puntos que queremos dibujar en el plano 3D

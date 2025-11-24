@@ -2,11 +2,21 @@
 title: "Actividad 1: Aplicación de técnicas de aprendizaje no supervisado sobre datos biológicos"
 author: "Mirkka Puente Madrid"
 date: "`r Sys.Date()`"
-output: html_document
+output:
+  html_document:
+    theme: journal
+    toc: true
+    toc_float: true
+    number_sections: true
+    highlight: tango
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(
+  message = FALSE,  # oculta mensajes (como los de cargar librerías)
+  warning = FALSE,  # oculta warnings
+  echo = TRUE       
+)
 ```
 
 # Actividad 1: Aplicación de técnicas de aprendizaje no supervisado sobre datos biológicos
@@ -86,7 +96,7 @@ dt_high_var <- dt_denoised[, vars > quantile(vars, 0.1)] #calcula el percentil 1
 
 # Calculo de componentes principales con la funcion prcomp
 set.seed(1997)
-pca.results <- prcomp(dt_high_var, center=TRUE, scale.=FALSE)
+pca.results <- prcomp(dt_high_var, center=TRUE, scale.=TRUE)
 
 # Resultado de las componentes principales
 pca.df <- data.frame(pca.results$x)
@@ -121,7 +131,8 @@ ggplot(pca.df, aes(x=PC1, y=PC2, color=lb$Class)) +
 
 
 ```
-### Multidimensional Scaling 
+
+### Multidimensional Scaling
 
 ```{r MDS}
 #Remover todas las variables creadas en environment so far
@@ -207,7 +218,7 @@ dt_dist <- 1 - corr
 distances <- as.dist(dt_dist)
 
 # Utilizamos la funcon cmdscale para realizar el MSD
-mds.results <- cmdscale(distances, eig=TRUE, k=2, x.ret=TRUE)
+mds.results <- cmdscale(distances, k=2, eig=TRUE, x.ret=TRUE)
 
 # Calculamos la varianza explicada
 varianza.explicada <- mds.results$eig/sum(mds.results$eig) * 100
@@ -216,18 +227,22 @@ varianza.explicada <- mds.results$eig/sum(mds.results$eig) * 100
 mds.df <- data.frame(mds.results$points)
 
 # Grafico
-ggplot(mds.df, aes(x=X1, y=X2, color=lb$Class)) +
-  geom_point(size=3) + 
-  scale_color_manual(values=c("red", "blue", "green", "orange", "purple")) +
-  labs(title="MDS - Types of Cancer", x="Dimension 1 (X1)", y="Dimension 2 (X2)", color = "Grupo") +
-  theme_minimal() + 
-  theme(panel.grid.major = element_line(color = "gray90"), panel.grid.minor = element_blank(),
-        panel.background = element_rect(fill = "gray95"), plot.title=element_text(hjust=0.5))
-
-##Los tipos de cáncer tienen firmas de expresión distintas, pero no todos por igual.
-#Algunos (KIRC, PRAD) se separan bien.
-#Otros (COAD, LUAD, BRCA) comparten más similitud global.
-
+ggplot(mds.df, aes(x = X1, y = X2, color = lb$Class)) +
+  geom_point(size = 3) +
+  scale_color_manual(values = c("red", "blue", "green", "orange", "purple")) +
+  labs(
+    title = "MDS - Types of Cancer",
+    x = "Dimension 1 (X1)",
+    y = "Dimension 2 (X2)",
+    color = "Grupo"
+  ) +
+  theme_minimal() +
+  theme(
+    panel.grid.major = element_line(color = "gray90"),
+    panel.grid.minor = element_blank(),
+    panel.background = element_rect(fill = "gray95"),
+    plot.title = element_text(hjust = 0.5)
+  )
 ```
 
 ### T-distributed Stochastic Neighbor Embedding
@@ -305,7 +320,7 @@ dt_scaled <- scale(dt_high_var)
 #   Variable Y con matriz del t-SNE
 
 set.seed(1997)
-tsne <- Rtsne(X=dt_scaled, perplexity = 50, theta = 0.5, pca = TRUE)
+tsne <- Rtsne(X=dt_scaled, perplexity = 50, pca = TRUE)
 tsne_result <- data.frame(tsne$Y)
 
 # Graficamos
@@ -324,17 +339,13 @@ panel.background = element_rect(fill = "gray95"), plot.title=element_text(hjust=
 ```{r isomap}
 
 #Remover todas las variables creadas en environment so far
-rm(list=ls())
+rm(list = ls())
 #Establecer nuestro directorio donde trabajaremos
 setwd("C:/Users/User/Desktop/UNIR/Algoritmos_IA/Algoritmos_AI")
 
 #Install libraries
 # Instalación
-pack_list <- c("ggplot2",
-               "dplyr",
-               "BiocManager",
-               "plotly"
-               )
+pack_list <- c("dplyr", "BiocManager", "plotly")
 
 for (pack in pack_list) {
   if (!requireNamespace(pack, quietly = TRUE))
@@ -343,20 +354,18 @@ for (pack in pack_list) {
 #BiocManager::install("RDRToolbox")
 
 # Carga de librerias
-library(ggplot2)
 library(dplyr)
-library(BiocManager)
 library(RDRToolbox)
 library(plotly)
 
 #Guardar data en nuestro environment
 file <- "data_1000.csv"
-dt <- read.csv(file, fileEncoding="UTF-8-BOM", check.names=FALSE)
+dt <- read.csv(file, fileEncoding = "UTF-8-BOM", check.names = FALSE)
 lb <- read.csv('labels.csv')
 #Prueba
 #dt_500 <- read.csv("datos_500.csv", fileEncoding="UTF-8-BOM", check.names=FALSE)
 
-# Guardado en un dataframe 
+# Guardado en un dataframe
 dt_frame <- data.frame(sapply(dt[2:1001], as.numeric))
 
 # Valores NA y 0
@@ -384,7 +393,7 @@ vars <- apply(dt_denoised, 2, var) #2 es para columnas, var calcula varianza
 dt_high_var <- dt_denoised[, vars > quantile(vars, 0.1)] #calcula el percentil 10 de var
 
 #Escalar mis datos porque isometric mapping espera escalas similares.
-dt_scaled <- scale(dt_high_var) 
+dt_scaled <- scale(dt_high_var)
 
 # Algoritmo
 
@@ -397,22 +406,85 @@ dt_scaled <- scale(dt_high_var)
 #   Si se ha elegido una unica dimension devuelve una matriz
 #   Si se ha elegido un vector de dimensiones devolvera una matriz por cada elemento del vector
 
-# Calculamos isomap de 1 a 5 dimensiones y con 30 vecinos 
-isomap.results = Isomap(data=dt_scaled, dims=1:5, k=30, plotResiduals=TRUE)
+# Calculamos isomap de 1 a 5 dimensiones y con 30 vecinos
+isomap.results = Isomap(
+  data = dt_scaled,
+  dims = 1:5,
+  k = 30,
+  plotResiduals = TRUE
+)
 
 # Dataframe con los puntos que queremos dibujar en el plano 3D
-isomap.df <- data.frame(isomap.results$dim3) 
+isomap.df <- data.frame(isomap.results$dim3)
 
 # Graficamos
 isomap.df$Class <- lb$Class                  # add labels
 
 # Plot
-plot_ly(isomap.df, x = ~X1, y = ~X2, z = ~X3, color = ~Class, 
-        colors = c("red", "blue", "green", "orange", "purple"),
-        type = "scatter3d", mode = "markers") %>%
+plot_ly(
+  isomap.df,
+  x = ~ X1,
+  y = ~ X2,
+  z = ~ X3,
+  color = ~ Class,
+  colors = c("red", "blue", "green", "orange", "purple"),
+  type = "scatter3d",
+  mode = "markers"
+) %>%
   layout(title = "Isomap 3D - Types of Cancer")
-
 
 ```
 
+### Questions
 
+1.  Ambiente y librerías de trabajo:
+
+-   ¿Qué librerías han sido necesarias para llevar a cabo la implementación de cada uno de los métodos de aprendizaje no supervisado? Explica el rol de los argumentos de las funciones que has utilizado en cada método de reducción de dimensionalidad.
+
+a.  Análisis de Componentes Principales: las librerías usadas fueron "stats" que tiene la función prcomp que realiza el PCA, "ggplot2" para graficar los componentes prinicipales y "dplyr" que se usa para organizar de mejor manera la base de datos. Para la función **prcomp** se utilizaron los argumentos de data, center y scale.. *data* representa el data frame que usamos con la información de nuestros genes, *center* en TRUE para indicar que las variables deben ser centradas en cero y finalmente, *scale.* en TRUE para indicar que las variables deben ser escaladas para tener varianza unitaria antes del análisis. Se recomienda que los datos sean escalados.
+
+b.  Multidimensional Scaling: las librerías usadas fueron "stats" que tiene la función cdmscale que realiza el MDS, "ggplot2" para graficar en las dimensiones y "dplyr" que se usa para organizar de mejor manera la base de datos. Para la función **cmdscale** se utilizaron los argumentos de d, eig, k y x.ret. *d* que es un vector de distancias resultado de calcular (1 - correlación Pearson), *k* que representa el máximo de dimensiones del espacio en donde los datos se van a representar, *eig* en TRUE para que retorne los eigenvalues para saber la varianza explicada por cada dimensión y *x.ret* en TRUE para que la función devuelva la matriz interna X (las coordenadas centradas de los puntos originales en el espacio de máxima dimensión).
+
+c.  T-distributed Stochastic Neighbor Embedding: las librerías usadas fueron "Rtsne" que tiene la función Rtsne que realiza el t-sne, "ggplot2" para graficar en 2D y "dplyr" que se usa para organizar de mejor manera la base de datos. Para la función **Rtsne** se utilizaron los argumentos X, perpexity, theta y pca. *X* que es la matriz de datos, *perplexity* que mide cuántos vecinos cercanos considera relevantes y *pca* en TRUE para que se corra un PCA antes de analizar los datos. Se recomienda hacer un PCA antes del análisis de t-sne.
+
+d.  Isometric Mapping: las librerías usadas fueron "RDRToolbox" del paquete BiocManager, que tiene la función Isomap que realiza el mapping, "plotly" para graficar en 3D y "dplyr" que se usa para organizar de mejor manera la base de datos. Para la función **Isomap** se usaron los argumentos data, dims, k y plotResiduals. *data* que es nuestra matriz, *dims* para indicar el número de dimensiones a calcular, *k* para indicar el número de vecinos y *plotResiduals* en TRUE para indicar el plot de residuos entre la más alta y más baja dimensionalidad.
+
+<!-- -->
+
+2.  Procesamiento de los datos:
+
+-   ¿Qué problemas has detectado en el conjunto de datos que te han sido proporcionados? ¿Cómo los has solucionado?
+
+Principalmente tuve problemas con el número de variables a considerar (número de genes). El documento data.csv es muy pesado y no logré que mi R pueda leerlo completmanete en mi environment. Lo que hice fue reducir el número de variables a 1000, con esta muestra pude trabajar con las observaciones completas (801 x 1000). Para todos los algoritmos fue importante trabajar con los genes que mostraran mayor variabilidad y que se eliminaran los genes con expresión cero o con variabilidad muy baja. Para el MDS, necesitaba escoger la manera de calcular la distancia correctamente. En expresión génica no se usa la distancia Euclídea, por lo que primero hice una correlación de Pearson que mide la fuerza y dirección de la relación linear entre dos variables, luego hice distancias con 1 menos la correlación. Para el t-sne se calcula primero un PCA porque el alrgoritmo puede llegar a ser muy lento. El PCA ayuda a reducir el número de datos a analizar. El algortimo para hacer el isometric mapping se demoró un poco al analizar todos los datos. Su velocidad no era tanto problema (se demoró alrededor de 6 segundos) por lo que no vi conveniente cambiar el valor *theta* de la función. El valor *theta* controla la velocidad del algoritmo y su valor default es 0.5. Sin embargo, la velocidad del logaritmo es algo a considerar si existen demasiadas variables.
+
+3.  Métodos no supervisados:
+
+-   ¿Cuál es el motivo por el cual has seleccionado estas técnicas de reducción de dimensionalidad?
+
+    El PCA se utiliza para saber cuál es la mayor fuente de variación de mis datos, qué genes tienen más variabilidad y definir cuáles son los tipos de cáncer que se agrupan (las muestras con perfiles de expresión global muy parecidos). Además, PC1 y PC2 capturan la señal más fuerte (a menudo \>50% de varianza).
+
+    El MDS se utiliza para crear una figura 2D que sea fácil de entender que sea 100 % interpretable. También, se quiere enfatizar que dos muestras son “transcripcionalmente idénticas” o “casi idénticas” por lo que usar la correlación Pearson es un beneficio.
+
+    El t-sne se utilizó porque separa muy bien a los grupos y subgrupos locales. Detecta clusters naturales aun si la separación es no lineal y preserva a los vecinos muy bien y graficamente es muy bueno.
+
+     El isometric mapping se usa para descubrir y visualizar estructuras no lineales y explorar relaciones globales entre tipos celulares.
+
+-   ¿Qué aspectos positivos y negativos tienen cada una de las técnicas escogidas? (0,5 puntos).
+
+    PCA: es rápido, reproducible, conserva la estructura global de los datos, es fácil de interpretar y útil para reducir ruido. Los aspectos negativos son que solo captura relaciones lineares, las primeras variables pueden estar dominadas por los genes de alta variación y es sensible a outliers.
+
+    MDS: preserva la distancia global y trabaja bien con una matriz de distancia, teniendo varias opciones de calcularla. Las desventajas es que no captura estructuras no lineales, puede ser lento, no es robusto cuando hay ruido, sensible a outliers.
+
+    t-sne: es excelente para visualizar clusters, preserva extremadamente bien las relaciones locales, es ideal para encontrar subgrupos. Las limitaciones son que es muy dependiente a parámetros externos (perplexity), no se puede reproducir fácilmente (nesecita un seed), no se utiliza para análisis cuantitativo (solo visualización) y es sensible al ruido.
+
+    Isometric mapping: es bueno trabajando en estructuras no lineales, preserva distancias geodésicas y captura gradientes o progresiones. Sus desventajas son ser sensible al parámetro k (número de vecinos), es lento y se puede volver impráctico, puede distorsionar clústers si el valor de k es muy alto.
+
+-   Comenta para cada caso el resultado de representar gráficamente las primeras dos variables de cada uno de los métodos. ¿Qué se observa? ¿Tiene sentido biológico? Razona tu respuesta.
+
+    PCA: PC1 (12.6 %) separa principalmente el cáncer de riñón (KIRC) del resto de tipos de cáncer. El PC2 (9.2 %) apenas separa el cáncer de mama (BRCA) de los cáncer colorrectal, pulmonar y de próstata. Ya que los tipos de cáncer están interpuestos, se puede decir que tienen perfiles de expresión génica global similar. Los cinco cánceres (BRCA, LUAD, COAD, PRAD, KIRC) forman clusters casi perfectos usando solo 1000 genes, lo que nos indica que el transcriptoma es un clasificador bueno. La gran dispersión del cáncer de mama (BRCA) refleja los diferentes subtipos del cáncer según su expresión génica.
+
+    MDS: El MDS muestra el cáncer de riñon (KIRC) alejado de los demás tipos de cáncer, el cáncer de mama (BRCA) es el más heterogéneo y disperso, mientras que próstata (PRAD) y colon (COAD) aparecen como clusters homogéneos y bien definidos. Este resultado es parecido al PCA, pero la dimensión 2 muestra una mejor división de los tipos de cáncer (BRCA, LUAD, COAD, PRAD).
+
+    t-sne: Los grupos BRCA, COAD, KIRC, LUAD y PRAD forman clusters compactos, bien diferenciados y sin solapamiento fuerte. Lo que significa que cada tipo de cáncer tiene una firma de expresión génica distintiva, las diferencias son lo suficientemente grandes como para que formen grupos homogéneos.
+
+    Isometric mapping: los grupos pueden parecer más cercanos entre sí aunque siguen siendo distinguibles. En la gráfica, cada tipo de cáncer forma un cluster compacto, indicando que comparten patrones internos de expresión génica. BRCA y LUAD aparecen parcialmente solapados, sugiriendo que sus perfiles pueden tener similitudes sutiles. KIRC y PRAD se separan claramente, lo que indica una estructura molecular más distinta.
